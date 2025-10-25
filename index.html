@@ -2,23 +2,80 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Webhook Sender</title>
+  <title>Discord Webhook Sender</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding-top: 100px; }
-    button { padding: 10px 20px; font-size: 18px; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 100px;
+      background: #0d1117;
+      color: #c9d1d9;
+    }
+    input[type="text"] {
+      width: 60%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      background: #161b22;
+      color: #c9d1d9;
+    }
+    button, label {
+      margin-top: 20px;
+      font-size: 18px;
+      background: #238636;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #2ea043;
+    }
+    #status {
+      margin-top: 25px;
+      font-size: 16px;
+      color: #58a6ff;
+    }
+    .repeat-container {
+      margin-top: 15px;
+    }
   </style>
 </head>
 <body>
-  <h1>Send Discord Webhook Message</h1>
-  <button id="sendBtn">Send Message 🚀</button>
+  <h1>Ping Kings With Something</h1>
+
+  <input type="text" id="messageBox" placeholder="Type your message here..." />
+  <br>
+
+  <div class="repeat-container">
+    <label>
+      <input type="checkbox" id="repeatToggle">
+      Repeat every 2.5s
+    </label>
+  </div>
+
+  <button id="sendBtn">Send Message</button>
+
+  <div id="status">Status: Idle</div>
 
   <script>
-    const WEBHOOK_URL = "https://discord.com/api/webhooks/1424895410081890425/-r-8qhdHqnEiPa1OEfSNoNmzRpzKAe7enppLFz60hBXsrfvPZsJ6b53SYI5KCR35eWvV";
+    const WEBHOOK_URL = "https://discord.com/api/webhooks/1431513788921810944/xjnj4IfZbQadLhqORxtlmolnkqbZFVw6vKK3ccps3EO-ZeN9Zz8ElQ8lD4qhSOr5-9xB";
+    const USER_TAG = "<@1316427849900752978>";
 
-    document.getElementById("sendBtn").addEventListener("click", async () => {
-      const payload = {
-        content: "<@1316427849900752978> Pussy!"
-      };
+    const sendBtn = document.getElementById("sendBtn");
+    const messageBox = document.getElementById("messageBox");
+    const repeatToggle = document.getElementById("repeatToggle");
+    const status = document.getElementById("status");
+
+    let intervalId = null;
+
+    async function sendMessage() {
+      const userMessage = messageBox.value.trim() || "(no text)";
+      const fullMessage = `${USER_TAG} ${userMessage}`;
+
+      const payload = { content: fullMessage };
 
       try {
         const res = await fetch(WEBHOOK_URL, {
@@ -28,12 +85,31 @@
         });
 
         if (res.ok) {
-          alert("✅ Message sent!");
+          status.textContent = `✅ Sent: "${userMessage}"`;
         } else {
-          alert("❌ Failed: " + res.statusText);
+          status.textContent = `❌ Failed: ${res.statusText}`;
         }
       } catch (err) {
-        alert("⚠️ Error: " + err);
+        status.textContent = `⚠️ Error: ${err.message}`;
+      }
+    }
+
+    sendBtn.addEventListener("click", () => {
+      if (repeatToggle.checked) {
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+          status.textContent = "⏹️ Repeat stopped.";
+          sendBtn.textContent = "Send Message";
+          repeatToggle.checked = false;
+        } else {
+          sendMessage(); // send once immediately
+          intervalId = setInterval(sendMessage, 2500);
+          status.textContent = "🔁 Sending messages every 2.5s...";
+          sendBtn.textContent = "Stop Sending ⏹️";
+        }
+      } else {
+        sendMessage();
       }
     });
   </script>
