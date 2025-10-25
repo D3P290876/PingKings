@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Discord Webhook Sender</title>
+  <title>Multi-Webhook Discord Sender</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      padding-top: 100px;
+      padding-top: 60px;
       background: #0d1117;
       color: #c9d1d9;
     }
@@ -20,7 +20,7 @@
       background: #161b22;
       color: #c9d1d9;
     }
-    button, label {
+    button {
       margin-top: 20px;
       font-size: 18px;
       background: #238636;
@@ -30,16 +30,22 @@
       border-radius: 6px;
       cursor: pointer;
     }
-    button:hover {
-      background: #2ea043;
+    button:hover { background: #2ea043; }
+    .repeat-container, .webhook-toggles {
+      margin-top: 20px;
+    }
+    label {
+      margin: 5px 10px;
+      font-size: 16px;
+    }
+    input[type="checkbox"] {
+      transform: scale(1.3);
+      margin-right: 5px;
     }
     #status {
       margin-top: 25px;
       font-size: 16px;
       color: #58a6ff;
-    }
-    .repeat-container {
-      margin-top: 15px;
     }
   </style>
 </head>
@@ -51,17 +57,33 @@
 
   <div class="repeat-container">
     <label>
-      <input type="checkbox" id="repeatToggle">
-      Repeat every 2.5s
+      <input type="checkbox" id="repeatToggle"> Repeat(400ms Delay)
     </label>
   </div>
 
   <button id="sendBtn">Send Message</button>
 
+  <div class="webhook-toggles">
+    <h3>Webhook Toggles:</h3>
+    <label><input type="checkbox" id="wh1" checked> Webhook 1</label>
+    <label><input type="checkbox" id="wh2"> Webhook 2</label>
+    <label><input type="checkbox" id="wh3"> Webhook 3</label>
+    <label><input type="checkbox" id="wh4"> Webhook 4</label>
+    <label><input type="checkbox" id="wh5"> Webhook 5</label>
+  </div>
+
   <div id="status">Status: Idle</div>
 
   <script>
-    const WEBHOOK_URL = "https://discord.com/api/webhooks/1431513788921810944/xjnj4IfZbQadLhqORxtlmolnkqbZFVw6vKK3ccps3EO-ZeN9Zz8ElQ8lD4qhSOr5-9xB";
+    // ✅ Replace with your own webhook URLs
+    const WEBHOOKS = [
+      "https://discord.com/api/webhooks/1431513788921810944/xjnj4IfZbQadLhqORxtlmolnkqbZFVw6vKK3ccps3EO-ZeN9Zz8ElQ8lD4qhSOr5-9xB",
+      "https://discord.com/api/webhooks/1431523825664921610/dYv-Vw1STcFJiAC1twVw-FrtIjYd2yPIa6QMGaCNK7L2i5cpftCoShH5Djm459S_SPVo",
+      "https://discord.com/api/webhooks/1431524222093623317/kVIpFruS54SLMq4pVWz1oOFKy_SdRJGdMoeQw7cy9Eq9VZ4_3M8s_fUaXpVn74MrxrIP",
+      "https://discord.com/api/webhooks/1431524314057932882/j00D7eN8Pk6FGmLEo5dZNoJON6UXIn3SWB6cxjjrEmzhWvA8r9Mvev8VkYVzXuDJVWZp",
+      "https://discord.com/api/webhooks/1431524448233590814/X5OuJ-Dv4yfFbHxDEtawXhIItdV1DElpIbXFLUrr9oZwxDkYJXqVgINSt8yCQhw8gwLE"
+    ];
+
     const USER_TAG = "<@1316427849900752978>";
 
     const sendBtn = document.getElementById("sendBtn");
@@ -69,29 +91,50 @@
     const repeatToggle = document.getElementById("repeatToggle");
     const status = document.getElementById("status");
 
+    const webhookToggles = [
+      document.getElementById("wh1"),
+      document.getElementById("wh2"),
+      document.getElementById("wh3"),
+      document.getElementById("wh4"),
+      document.getElementById("wh5")
+    ];
+
     let intervalId = null;
 
     async function sendMessage() {
       const userMessage = messageBox.value.trim() || "(no text)";
       const fullMessage = `${USER_TAG} ${userMessage}`;
 
-      const payload = { content: fullMessage };
+      // Get enabled webhooks
+      const enabledWebhooks = WEBHOOKS.filter((_, i) => webhookToggles[i].checked);
 
-      try {
-        const res = await fetch(WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-          status.textContent = `✅ Sent: "${userMessage}"`;
-        } else {
-          status.textContent = `❌ Failed: ${res.statusText}`;
-        }
-      } catch (err) {
-        status.textContent = `⚠️ Error: ${err.message}`;
+      if (enabledWebhooks.length === 0) {
+        status.textContent = "⚠️ No webhooks selected!";
+        return;
       }
+
+      const payload = { content: fullMessage };
+      const results = [];
+
+      // Send to all enabled webhooks in parallel
+      await Promise.all(enabledWebhooks.map(async (url, idx) => {
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            results.push(`✅ Webhook ${idx + 1}`);
+          } else {
+            results.push(`❌ Webhook ${idx + 1} (${res.status})`);
+          }
+        } catch (err) {
+          results.push(`⚠️ Webhook ${idx + 1} (${err.message})`);
+        }
+      }));
+
+      status.textContent = `Sent: ${results.join(", ")}`;
     }
 
     sendBtn.addEventListener("click", () => {
@@ -103,9 +146,9 @@
           sendBtn.textContent = "Send Message";
           repeatToggle.checked = false;
         } else {
-          sendMessage(); // send once immediately
-          intervalId = setInterval(sendMessage, 2500);
-          status.textContent = "🔁 Sending messages every 2.5s...";
+          sendMessage(); // send immediately
+          intervalId = setInterval(sendMessage, 400);
+          status.textContent = "🔁 Sending messages every 400ms...";
           sendBtn.textContent = "Stop Sending ⏹️";
         }
       } else {
